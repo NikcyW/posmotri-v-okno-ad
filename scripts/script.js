@@ -4,6 +4,61 @@ const cardsOnPage = 5;
 const BASE_URL = 'https://v-content.practicum-team.ru';
 const endpoint = `${BASE_URL}/api/videos?pagination[pageSize]=${cardsOnPage}&`;
 
+/* MOCK ДАННЫЕ ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ */
+const mockData = {
+  results: [
+    {
+      id: 1,
+      city: 'Белгород',
+      description: 'Вид на центральную улицу города с историческими зданиями',
+      video: { url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+      poster: { url: './images/img1.png' },
+      thumbnail: { url: './images/img1.png' },
+      time_of_day: 'morning'
+    },
+    {
+      id: 2,
+      city: 'Адлер',
+      description: 'Прекрасный вид на побережье Чёрного моря с пляжами',
+      video: { url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+      poster: { url: './images/img2.png' },
+      thumbnail: { url: './images/img2.png' },
+      time_of_day: 'afternoon'
+    },
+    {
+      id: 3,
+      city: 'Воронеж',
+      description: 'Вечерний город со светящимися огнями и красивой архитектурой',
+      video: { url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+      poster: { url: './images/img3.png' },
+      thumbnail: { url: './images/img3.png' },
+      time_of_day: 'evening'
+    },
+    {
+      id: 4,
+      city: 'Зеленоград',
+      description: 'Современный город с зелёными парками и современными зданиями',
+      video: { url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+      poster: { url: './images/img4.png' },
+      thumbnail: { url: './images/img4.png' },
+      time_of_day: 'night'
+    },
+    {
+      id: 5,
+      city: 'Санкт-Петербург',
+      description: 'Северная столица с каналами, дворцами и культурными памятниками',
+      video: { url: 'https://commondatastorage.googleapis.com/gtv-videos-library/sample/BigBuckBunny.mp4' },
+      poster: { url: './images/img1.png' },
+      thumbnail: { url: './images/img1.png' },
+      time_of_day: 'morning'
+    }
+  ],
+  pagination: {
+    page: 1,
+    pageCount: 1
+  }
+};
+
 /* ЭЛЕМЕНТЫ СТРАНИЦЫ */
 const cardsList = document.querySelector('.content__list');
 const cardsContainer = document.querySelector('.content__list-container');
@@ -59,7 +114,24 @@ form.onsubmit = (e) => {
 
 async function mainMechanics(endpoint) {
   try {
-    const data = await (await fetch(endpoint)).json();
+    let data;
+    try {
+      data = await (await fetch(endpoint)).json();
+    } catch (fetchErr) {
+      console.log('API недоступен, используются mock данные');
+      data = mockData;
+
+      // Фильтруем mock данные по городу из URL
+      const urlParams = new URLSearchParams(endpoint.split('?')[1] || '');
+      const cityFilter = urlParams.get('filters[city][$containsi]');
+
+      if (cityFilter) {
+        data.results = mockData.results.filter(item =>
+          item.city.toLowerCase().includes(cityFilter.toLowerCase())
+        );
+      }
+    }
+
     cardsOnPageState = data.results;
 
     if (!data?.results?.[0]) {
@@ -67,14 +139,14 @@ async function mainMechanics(endpoint) {
     }
 
     appendCards({
-      baseUrl: BASE_URL,
+      baseUrl: '',
       dataArray: data.results,
       cardTmp,
       container: cardsList,
     });
 
     setVideo({
-      baseUrl: BASE_URL,
+      baseUrl: '',
       video: videoElement,
       videoUrl: data.results[0].video.url,
       posterUrl: data.results[0].poster.url,
@@ -91,7 +163,7 @@ async function mainMechanics(endpoint) {
     cardsContainer.classList.add('custom-scrollbar');
 
     chooseCurrentVideo({
-      baseUrl: BASE_URL,
+      baseUrl: '',
       videoData: cardsOnPageState,
       cardLinksSelector: '.content__card-link',
       currentLinkClassName: 'content__card-link_current',
@@ -104,7 +176,7 @@ async function mainMechanics(endpoint) {
       cardsList,
       buttonSelector: '.more-button',
       initialEndpoint: endpoint,
-      baseUrl: BASE_URL,
+      baseUrl: '',
       cardTmp: cardTmp,
     });
   } catch (err) {
@@ -133,7 +205,21 @@ async function delay(ms) {
 
 async function waitForReadyVideo(video) {
   return await new Promise((resolve) => {
-    video.oncanplaythrough = resolve;
+    const timeout = setTimeout(() => {
+      console.log('Timeout: видео не загрузилось, продолжаем');
+      resolve();
+    }, 1000);
+
+    video.oncanplay = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+
+    video.onerror = () => {
+      clearTimeout(timeout);
+      console.log('Ошибка при загрузке видео, продолжаем');
+      resolve();
+    };
   });
 }
 
@@ -306,3 +392,5 @@ function showMoreCards({
     }
   });
 }
+
+
